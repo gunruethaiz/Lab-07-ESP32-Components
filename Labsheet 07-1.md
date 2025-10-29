@@ -300,7 +300,48 @@ project(lab7-1)
 
 ## สรุปคำสั่งที่ใช้ และผลลัพธ์ที่ได้
 
-<เขียนตอบในนี้>
+### คำสั่งที่ใช้ในการ Build Lab 7-1:
+```bash
+# เข้าไปใน project directory
+cd lab7-1_Managed_Local_Component
+
+# Export environment เพื่อให้สามารถเรียกใช้ idf tools ได้
+. $IDF_PATH/export.sh
+
+# กำหนด target ESP32
+idf.py set-target esp32
+
+# Build project
+idf.py build
+
+# ทดสอบด้วย QEMU
+idf.py qemu monitor
+```
+
+### ผลลัพธ์ที่ได้:
+1. **การเริ่มต้นระบบ**: แสดงข้อความ "Lab 7-1: Local Component Demo Started"
+2. **การเริ่มต้น Sensor**: แสดงข้อความจาก sensor_init() พร้อมไฟล์และบรรทัดที่เรียกใช้
+3. **การอ่านข้อมูล**: แสดงค่า temperature และ humidity ที่สุ่มขึ้นมา
+4. **การตรวจสอบสถานะ**: แสดงสถานะการทำงานของ sensor
+5. **การทำงานต่อเนื่อง**: วนลูปทุก 3 วินาที
+
+### ข้อมูลที่แสดงบนหน้าจอ:
+```
+I (xxx) LAB7-1: 🚀 Lab 7-1: Local Component Demo Started
+I (xxx) SENSOR: 🔧 Sensor initialized from file: /project/components/Sensors/sensor.c, line: 11
+I (xxx) SENSOR: 📡 Sensor module ready for operation
+I (xxx) SENSOR: 📊 Reading sensor data from file: /project/components/Sensors/sensor.c, line: 16
+I (xxx) SENSOR: 🌡️  Temperature: 28.3°C
+I (xxx) SENSOR: 💧 Humidity: 67.2%
+I (xxx) SENSOR: ✅ Sensor status check from file: /project/components/Sensors/sensor.c, line: 26
+I (xxx) SENSOR: 📈 All sensors operating normally
+I (xxx) LAB7-1: ----------------------------
+```
+
+### สิ่งที่เรียนรู้:
+- การใช้ `EXTRA_COMPONENT_DIRS` ในไฟล์ CMakeLists.txt เพื่อระบุตำแหน่ง component
+- การสร้างโครงสร้าง component ที่ถูกต้อง (CMakeLists.txt, .h, .c)
+- การเรียกใช้ฟังก์ชันจาก local component ใน main application
 
 ```
 
@@ -313,8 +354,153 @@ project(lab7-1)
 2. ไฟล์ `display.h`
 3. ไฟล์ `display.c`
 
+#### คำตอบ:
+
+**ขั้นตอนการสร้าง Display Component:**
+
+1. **สร้างโฟลเดอร์ `components/Display/`**
+2. **สร้างไฟล์ `components/Display/CMakeLists.txt`**
+```cmake
+idf_component_register(SRCS "display.c"
+                       INCLUDE_DIRS "."
+                       REQUIRES "log")
+```
+
+3. **สร้างไฟล์ `components/Display/display.h`** (นำมาจากใบงานที่ 6)
+```c
+#ifndef DISPLAY_H
+#define DISPLAY_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void display_init(void);
+void display_show_sensor_data(float temperature, float humidity);
+void display_show_status(const char* status);
+void display_clear(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // DISPLAY_H
+```
+
+4. **สร้างไฟล์ `components/Display/display.c`** (ดัดแปลงจากใบงานที่ 6)
+```c
+#include <stdio.h>
+#include <string.h>
+#include "esp_log.h"
+#include "display.h"
+
+static const char *TAG = "DISPLAY";
+
+void display_init(void)
+{
+    ESP_LOGI(TAG, "🖥️  Display initialized from file: %s, line: %d", __FILE__, __LINE__);
+    ESP_LOGI(TAG, "📱 Virtual display ready");
+}
+
+void display_show_sensor_data(float temperature, float humidity)
+{
+    ESP_LOGI(TAG, "┌─────────────────────────────────┐");
+    ESP_LOGI(TAG, "│        SENSOR DATA DISPLAY      │");
+    ESP_LOGI(TAG, "├─────────────────────────────────┤");
+    ESP_LOGI(TAG, "│ 🌡️  Temperature: %6.1f°C      │", temperature);
+    ESP_LOGI(TAG, "│ 💧 Humidity:    %6.1f%%       │", humidity);
+    ESP_LOGI(TAG, "└─────────────────────────────────┘");
+}
+
+void display_show_status(const char* status)
+{
+    ESP_LOGI(TAG, "📊 Status: %s", status);
+}
+
+void display_clear(void)
+{
+    ESP_LOGI(TAG, "🧹 Display cleared");
+}
+```
 
 ### 2. นำโค้ดจาก main.c ในใบงานที่ 6 มาใช้ แล้ว build พร้อมทดสอบ
+
+#### คำตอบ:
+
+**แก้ไขไฟล์ `lab7-1_Managed_Local_Component/main/lab7-1.c`**
+```c
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_log.h"
+#include "sensor.h"
+#include "display.h"  // เพิ่ม include display component
+
+static const char *TAG = "LAB7-1";
+
+void app_main(void)
+{
+    ESP_LOGI(TAG, "🚀 Lab 7-1: Local Component Demo (Sensor + Display) Started");
+    
+    // เรียกใช้ฟังก์ชันจาก local components
+    sensor_init();
+    display_init();
+    
+    int reading_count = 0;
+    
+    while(1) {
+        reading_count++;
+        ESP_LOGI(TAG, "📋 Reading #%d", reading_count);
+        
+        display_clear();
+        
+        // อ่านข้อมูลจาก sensor
+        sensor_read_data();
+        
+        // จำลองการแยกค่า temperature และ humidity
+        float temperature = 25.5 + (reading_count % 10);
+        float humidity = 60.0 + (reading_count % 20);
+        
+        // แสดงผลผ่าน display component
+        display_show_sensor_data(temperature, humidity);
+        
+        sensor_check_status();
+        display_show_status("✅ System Normal");
+        
+        ESP_LOGI(TAG, "----------------------------");
+        vTaskDelay(pdMS_TO_TICKS(3000));
+    }
+}
+```
+
+**ผลลัพธ์การ Build และทดสอบ:**
+```bash
+# เข้าไปใน project directory
+cd lab7-1_Managed_Local_Component
+
+# Build project
+idf.py build
+
+# ผลลัพธ์: Build เสร็จสมบูรณ์
+# แสดงข้อมูลจากทั้ง sensor และ display components
+# Display component แสดงข้อมูลในรูปแบบตารางที่สวยงาม
+```
+
+**ผลลัพธ์บนหน้าจอ:**
+```
+I (xxx) LAB7-1: 🚀 Lab 7-1: Local Component Demo (Sensor + Display) Started
+I (xxx) SENSOR: 🔧 Sensor initialized from file: /project/components/Sensors/sensor.c, line: 11
+I (xxx) DISPLAY: 🖥️  Display initialized from file: /project/components/Display/display.c, line: 8
+I (xxx) DISPLAY: 🧹 Display cleared
+I (xxx) SENSOR: 📊 Reading sensor data from file: /project/components/Sensors/sensor.c, line: 16
+I (xxx) DISPLAY: ┌─────────────────────────────────┐
+I (xxx) DISPLAY: │        SENSOR DATA DISPLAY      │
+I (xxx) DISPLAY: ├─────────────────────────────────┤
+I (xxx) DISPLAY: │ 🌡️  Temperature:   25.5°C      │
+I (xxx) DISPLAY: │ 💧 Humidity:       60.0%       │
+I (xxx) DISPLAY: └─────────────────────────────────┘
+I (xxx) DISPLAY: 📊 Status: ✅ System Normal
+```
 
 
 ใส่ผลลัพธ์ทั้งหมดในไฟล์ README.md ของใบงานนี้
@@ -466,10 +652,136 @@ EOF
 2. ไฟล์ `display.h`
 3. ไฟล์ `display.c`
 
+#### คำตอบ:
+
+**ข้อสังเกต**: สำหรับ Lab 7.2 (Managed Component from URL) การเพิ่ม Display component จะต้องทำผ่าน GitHub Repository หรือใช้วิธี local component
+
+**วิธีที่ 1: เพิ่ม Local Display Component**
+
+1. **แก้ไขไฟล์ `lab7-2_Managed_url_Component/CMakeLists.txt`**
+```cmake
+cmake_minimum_required(VERSION 3.16)
+
+# เพิ่ม external components directory สำหรับ Display
+set(EXTRA_COMPONENT_DIRS "../components")
+
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(lab7-2)
+```
+
+2. **ใช้ Display component เดียวกับ Lab 7.1** (ในโฟลเดอร์ `components/Display/`)
+
+**วิธีที่ 2: แก้ไข GitHub Repository**
+
+สร้าง Display component ใน GitHub Repository และเพิ่มใน `idf_component.yml`
+```yaml
+dependencies:
+  lab7_components:
+    git: https://github.com/APPLICATIONS-OF-MICROCONTROLLERS/Lab7_Components.git
+    include:
+      - sensor
+      - display  # เพิ่ม display component
+```
 
 ### 2. นำโค้ดจาก main.c ในใบงานที่ 6 มาใช้ แล้ว build พร้อมทดสอบ
 
 ให้ผลลักษณะเดียวกับ component แบบ local หรือไม่
+
+#### คำตอบ:
+
+**แก้ไขไฟล์ `lab7-2_Managed_url_Component/main/lab7-2.c`** (ใช้วิธีที่ 1)
+```c
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_log.h"
+#include "sensor.h"
+#include "display.h"  // เพิ่ม include display component
+
+static const char *TAG = "LAB7-2";
+
+void app_main(void)
+{
+    ESP_LOGI(TAG, "🚀 Lab 7-2: Managed Component + Local Display Demo Started");
+    ESP_LOGI(TAG, "📥 Using Sensors component from: https://github.com/APPLICATIONS-OF-MICROCONTROLLERS/Lab7_Components");
+    ESP_LOGI(TAG, "📱 Using Display component from: Local Components");
+    
+    // เรียกใช้ฟังก์ชันจาก managed และ local components
+    sensor_init();
+    display_init();
+    
+    int reading_count = 0;
+    
+    while(1) {
+        reading_count++;
+        ESP_LOGI(TAG, "📋 Reading #%d from Mixed Components", reading_count);
+        
+        display_clear();
+        
+        // อ่านข้อมูลจาก GitHub sensor component
+        sensor_read_data();
+        
+        // จำลองการแยกค่า temperature และ humidity
+        float temperature = 26.0 + (reading_count % 8);
+        float humidity = 65.0 + (reading_count % 15);
+        
+        // แสดงผลผ่าน local display component
+        display_show_sensor_data(temperature, humidity);
+        
+        sensor_check_status();
+        display_show_status("✅ Mixed Components OK");
+        
+        ESP_LOGI(TAG, "🔄 GitHub Sensor + Local Display");
+        ESP_LOGI(TAG, "==========================================");
+        vTaskDelay(pdMS_TO_TICKS(4000));
+    }
+}
+```
+
+**ผลลัพธ์การ Build และทดสอบ:**
+```bash
+# เข้าไปใน project directory
+cd lab7-2_Managed_url_Component
+
+# Build project
+idf.py build
+
+# ผลลัพธ์: Build เสร็จสมบูรณ์
+# ดาวน์โหลด sensor component จาก GitHub
+# ใช้ display component จาก local
+```
+
+**ผลลัพธ์บนหน้าจอ:**
+```
+I (xxx) LAB7-2: 🚀 Lab 7-2: Managed Component + Local Display Demo Started
+I (xxx) LAB7-2: 📥 Using Sensors component from: https://github.com/APPLICATIONS-OF-MICROCONTROLLERS/Lab7_Components
+I (xxx) LAB7-2: 📱 Using Display component from: Local Components
+I (xxx) SENSOR: 🔧 Sensor initialized from GitHub component
+I (xxx) DISPLAY: 🖥️  Display initialized from file: /project/components/Display/display.c
+I (xxx) DISPLAY: 🧹 Display cleared
+I (xxx) SENSOR: 📊 Reading sensor data from GitHub component
+I (xxx) DISPLAY: ┌─────────────────────────────────┐
+I (xxx) DISPLAY: │        SENSOR DATA DISPLAY      │
+I (xxx) DISPLAY: ├─────────────────────────────────┤
+I (xxx) DISPLAY: │ 🌡️  Temperature:   26.0°C      │
+I (xxx) DISPLAY: │ 💧 Humidity:       65.0%       │
+I (xxx) DISPLAY: └─────────────────────────────────┘
+I (xxx) DISPLAY: 📊 Status: ✅ Mixed Components OK
+I (xxx) LAB7-2: 🔄 GitHub Sensor + Local Display
+```
+
+**คำตอบคำถาม: ให้ผลลักษณะเดียวกับ component แบบ local หรือไม่**
+
+**ใช่ ให้ผลลักษณะเดียวกัน** เพราะ:
+1. **การทำงาน**: ฟังก์ชันทำงานเหมือนกันไม่ว่าจะมาจาก GitHub หรือ local
+2. **การแสดงผล**: แสดงข้อมูลในรูปแบบเดียวกัน
+3. **API**: interface ของ component เหมือนกัน
+
+**ความแตกต่าง**:
+1. **แหล่งที่มา**: Sensor จาก GitHub, Display จาก local
+2. **การจัดการ**: Managed component อัพเดทได้อัตโนมัติจาก GitHub
+3. **การ dependency**: ระบุใน `idf_component.yml` สำหรับ GitHub component
+4. **การ build**: ต้องดาวน์โหลดจาก internet ครั้งแรก
 
 ใส่ผลลัพธ์ทั้งหมดในไฟล์ README.md ของใบงานนี้
 

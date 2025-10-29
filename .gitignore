@@ -1,0 +1,105 @@
+# ESP-IDF Build files
+build/
+sdkconfig
+sdkconfig.old
+sdkconfig.h
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Managed Components (downloaded from repositories)
+managed_components/
+dependencies.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Logs
+*.log
+*.tmp
+*.temp
+
+# Docker
+.dockerignore
+
+# Component specific ignores
+components/*/build/
+
+# Flash args
+flash_project_args
+app-flash_args
+
+# Partition table
+partition_table.bin
+
+# Project specific
+*.bin
+*.elf
+*.map
+
+# Temporary files
+*~
+*.bak
+*.orig
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Ninja
+.ninja_deps
+.ninja_log
+build.ninja
+
+# KConfig
+.config.old
+menuconfig.log
+
+# ESP-IDF tools
+tools/
+.espressif/
+
+# Test results
+test_results/
+*.xml
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+
+# Documentation
+docs/_build/
+
+# Local development
+local/
+scratch/
+notes.txt
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+
+# Environment variables
+.env
+.env.local
